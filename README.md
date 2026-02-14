@@ -37,6 +37,12 @@ python calendar_worklog.py --month 2026-02 --title "案件A" --timezone Asia/Tok
 python calendar_worklog.py --month 2026-02 --title "案件A" --show-matched-events
 ```
 
+曜日付きで詳細を表示:
+
+```bash
+python calendar_worklog.py --month 2026-02 --title "案件A" --show-matched-events --show-weekday
+```
+
 月末まで集計:
 
 ```bash

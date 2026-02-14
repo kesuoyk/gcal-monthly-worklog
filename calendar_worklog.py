@@ -117,9 +117,15 @@ def aggregate_event_seconds(
     return total_seconds, matched_count, details
 
 
-def format_event_detail_line(index: int, detail: MatchedEventDetail, tzinfo: ZoneInfo) -> str:
-    start_text = detail.start.astimezone(tzinfo).strftime("%Y-%m-%d %H:%M")
-    end_text = detail.end.astimezone(tzinfo).strftime("%Y-%m-%d %H:%M")
+def format_event_detail_line(
+    index: int,
+    detail: MatchedEventDetail,
+    tzinfo: ZoneInfo,
+    show_weekday: bool = False,
+) -> str:
+    date_format = "%Y-%m-%d (%a) %H:%M" if show_weekday else "%Y-%m-%d %H:%M"
+    start_text = detail.start.astimezone(tzinfo).strftime(date_format)
+    end_text = detail.end.astimezone(tzinfo).strftime(date_format)
     counted_hours = detail.counted_seconds / 3600.0
     return f"{index}. {start_text} -> {end_text} ({counted_hours:.2f}h)"
 
@@ -229,6 +235,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Show detail lines for each matched event",
     )
     parser.add_argument(
+        "--show-weekday",
+        action="store_true",
+        help="Show weekday in matched event detail lines",
+    )
+    parser.add_argument(
         "--include-through-month-end",
         action="store_true",
         help="Include events up to the end of the month (default caps at current time)",
@@ -267,7 +278,14 @@ def main(argv: list[str] | None = None) -> int:
             print("Matched event details:")
             display_tz = window.start.tzinfo
             for index, detail in enumerate(details, start=1):
-                print(format_event_detail_line(index, detail, display_tz))
+                print(
+                    format_event_detail_line(
+                        index=index,
+                        detail=detail,
+                        tzinfo=display_tz,
+                        show_weekday=args.show_weekday,
+                    )
+                )
     return 0
 
 

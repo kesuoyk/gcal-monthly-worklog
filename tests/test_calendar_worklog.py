@@ -119,6 +119,16 @@ class AggregateEventSecondsTests(unittest.TestCase):
         line = format_event_detail_line(1, detail, self.tz)
         self.assertEqual(line, "1. 2026-02-04 20:00 -> 2026-02-04 22:30 (2.50h)")
 
+    def test_format_event_detail_line_with_weekday(self):
+        detail = MatchedEventDetail(
+            title="案件A",
+            start=datetime(2026, 2, 4, 20, 0, 0, tzinfo=self.tz),
+            end=datetime(2026, 2, 4, 22, 30, 0, tzinfo=self.tz),
+            counted_seconds=2.5 * 3600,
+        )
+        line = format_event_detail_line(1, detail, self.tz, show_weekday=True)
+        self.assertEqual(line, "1. 2026-02-04 (Wed) 20:00 -> 2026-02-04 (Wed) 22:30 (2.50h)")
+
     def test_resolve_aggregation_window_caps_to_now_by_default(self):
         month_window = self.window(2026, 2)
         now = datetime(2026, 2, 10, 12, 0, 0, tzinfo=self.tz)
