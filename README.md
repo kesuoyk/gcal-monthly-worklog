@@ -2,6 +2,7 @@
 
 Google Calendar からタイトル完全一致の予定を取得し、指定月の合計稼働時間を集計する CLI です。  
 日跨ぎ・月跨ぎ予定は、対象月内に重なる実時間のみ加算します。
+デフォルトでは「現在時刻以前」までを集計し、`--include-through-month-end` で月末まで含めます。
 
 ## Requirements
 
@@ -30,10 +31,23 @@ python calendar_worklog.py --month 2026-02 --title "案件A"
 python calendar_worklog.py --month 2026-02 --title "案件A" --timezone Asia/Tokyo
 ```
 
+マッチした予定の詳細を表示:
+
+```bash
+python calendar_worklog.py --month 2026-02 --title "案件A" --show-matched-events
+```
+
+月末まで集計:
+
+```bash
+python calendar_worklog.py --month 2026-02 --title "案件A" --include-through-month-end
+```
+
 ## Output example
 
 ```text
 Month: 2026-02
+Aggregation end: 2026-02-14 21:00 JST
 Title (exact): 案件A
 Matched events: 7
 Total hours: 31.50h

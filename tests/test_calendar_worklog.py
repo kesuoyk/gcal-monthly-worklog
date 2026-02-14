@@ -2,7 +2,13 @@ import unittest
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from calendar_worklog import MonthWindow, aggregate_event_seconds
+from calendar_worklog import (
+    MatchedEventDetail,
+    MonthWindow,
+    aggregate_event_seconds,
+    format_event_detail_line,
+    resolve_aggregation_window,
+)
 
 
 class AggregateEventSecondsTests(unittest.TestCase):
@@ -26,9 +32,11 @@ class AggregateEventSecondsTests(unittest.TestCase):
                 "end": {"dateTime": "2026-02-11T02:00:00+09:00"},
             }
         ]
-        total_seconds, matched = aggregate_event_seconds(events, "案件A", self.window(2026, 2))
+        total_seconds, matched, details = aggregate_event_seconds(events, "案件A", self.window(2026, 2))
         self.assertEqual(matched, 1)
         self.assertEqual(total_seconds, 4 * 3600)
+        self.assertEqual(len(details), 1)
+        self.assertEqual(details[0].counted_seconds, 4 * 3600)
 
     def test_month_boundary_previous_month_to_target_month(self):
         events = [
@@ -39,7 +47,7 @@ class AggregateEventSecondsTests(unittest.TestCase):
                 "end": {"dateTime": "2026-02-01T02:00:00+09:00"},
             }
         ]
-        total_seconds, matched = aggregate_event_seconds(events, "案件A", self.window(2026, 2))
+        total_seconds, matched, _ = aggregate_event_seconds(events, "案件A", self.window(2026, 2))
         self.assertEqual(matched, 1)
         self.assertEqual(total_seconds, 2 * 3600)
 
@@ -52,7 +60,7 @@ class AggregateEventSecondsTests(unittest.TestCase):
                 "end": {"dateTime": "2026-03-01T02:00:00+09:00"},
             }
         ]
-        total_seconds, matched = aggregate_event_seconds(events, "案件A", self.window(2026, 2))
+        total_seconds, matched, _ = aggregate_event_seconds(events, "案件A", self.window(2026, 2))
         self.assertEqual(matched, 1)
         self.assertEqual(total_seconds, 3600)
 
@@ -71,7 +79,7 @@ class AggregateEventSecondsTests(unittest.TestCase):
                 "end": {"dateTime": "2026-02-05T13:00:00+09:00"},
             },
         ]
-        total_seconds, matched = aggregate_event_seconds(events, "案件A", self.window(2026, 2))
+        total_seconds, matched, _ = aggregate_event_seconds(events, "案件A", self.window(2026, 2))
         self.assertEqual(matched, 1)
         self.assertEqual(total_seconds, 3600)
 
@@ -84,7 +92,7 @@ class AggregateEventSecondsTests(unittest.TestCase):
                 "end": {"date": "2026-02-04"},
             }
         ]
-        total_seconds, matched = aggregate_event_seconds(events, "案件A", self.window(2026, 2))
+        total_seconds, matched, _ = aggregate_event_seconds(events, "案件A", self.window(2026, 2))
         self.assertEqual(matched, 0)
         self.assertEqual(total_seconds, 0)
 
@@ -97,9 +105,40 @@ class AggregateEventSecondsTests(unittest.TestCase):
                 "end": {"dateTime": "2026-02-01T10:00:00+09:00"},
             }
         ]
-        total_seconds, matched = aggregate_event_seconds(events, "案件A", self.window(2026, 2))
+        total_seconds, matched, _ = aggregate_event_seconds(events, "案件A", self.window(2026, 2))
         self.assertEqual(matched, 0)
         self.assertEqual(total_seconds, 0)
+
+    def test_format_event_detail_line(self):
+        detail = MatchedEventDetail(
+            title="案件A",
+            start=datetime(2026, 2, 4, 20, 0, 0, tzinfo=self.tz),
+            end=datetime(2026, 2, 4, 22, 30, 0, tzinfo=self.tz),
+            counted_seconds=2.5 * 3600,
+        )
+        line = format_event_detail_line(1, detail, self.tz)
+        self.assertEqual(line, "1. 2026-02-04 20:00 -> 2026-02-04 22:30 (2.50h)")
+
+    def test_resolve_aggregation_window_caps_to_now_by_default(self):
+        month_window = self.window(2026, 2)
+        now = datetime(2026, 2, 10, 12, 0, 0, tzinfo=self.tz)
+        resolved = resolve_aggregation_window(
+            month_window=month_window,
+            include_through_month_end=False,
+            now=now,
+        )
+        self.assertEqual(resolved.start, month_window.start)
+        self.assertEqual(resolved.end, now)
+
+    def test_resolve_aggregation_window_keeps_month_end_when_flag_enabled(self):
+        month_window = self.window(2026, 2)
+        now = datetime(2026, 2, 10, 12, 0, 0, tzinfo=self.tz)
+        resolved = resolve_aggregation_window(
+            month_window=month_window,
+            include_through_month_end=True,
+            now=now,
+        )
+        self.assertEqual(resolved, month_window)
 
 
 if __name__ == "__main__":

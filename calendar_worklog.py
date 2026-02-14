@@ -24,6 +24,14 @@ class MonthWindow:
     end: datetime
 
 
+@dataclass(frozen=True)
+class MatchedEventDetail:
+    title: str
+    start: datetime
+    end: datetime
+    counted_seconds: float
+
+
 def parse_month_window(month: str, timezone_name: str) -> MonthWindow:
     parts = month.split("-")
     if len(parts) != 2:
@@ -67,9 +75,12 @@ def overlap_seconds(event_start: datetime, event_end: datetime, window: MonthWin
     return (effective_end - effective_start).total_seconds()
 
 
-def aggregate_event_seconds(events: list[dict], target_title: str, window: MonthWindow) -> tuple[float, int]:
+def aggregate_event_seconds(
+    events: list[dict], target_title: str, window: MonthWindow
+) -> tuple[float, int, list[MatchedEventDetail]]:
     total_seconds = 0.0
     matched_count = 0
+    details: list[MatchedEventDetail] = []
 
     for event in events:
         if event.get("status") == "cancelled":
@@ -94,8 +105,37 @@ def aggregate_event_seconds(events: list[dict], target_title: str, window: Month
         if seconds > 0:
             matched_count += 1
             total_seconds += seconds
+            details.append(
+                MatchedEventDetail(
+                    title=target_title,
+                    start=event_start,
+                    end=event_end,
+                    counted_seconds=seconds,
+                )
+            )
 
-    return total_seconds, matched_count
+    return total_seconds, matched_count, details
+
+
+def format_event_detail_line(index: int, detail: MatchedEventDetail, tzinfo: ZoneInfo) -> str:
+    start_text = detail.start.astimezone(tzinfo).strftime("%Y-%m-%d %H:%M")
+    end_text = detail.end.astimezone(tzinfo).strftime("%Y-%m-%d %H:%M")
+    counted_hours = detail.counted_seconds / 3600.0
+    return f"{index}. {start_text} -> {end_text} ({counted_hours:.2f}h)"
+
+
+def resolve_aggregation_window(
+    month_window: MonthWindow,
+    include_through_month_end: bool,
+    now: datetime | None = None,
+) -> MonthWindow:
+    if include_through_month_end:
+        return month_window
+
+    current = now or datetime.now(month_window.start.tzinfo)
+    current_in_tz = current.astimezone(month_window.start.tzinfo)
+    capped_end = min(month_window.end, current_in_tz)
+    return MonthWindow(start=month_window.start, end=capped_end)
 
 
 def build_calendar_service():
@@ -145,6 +185,9 @@ def build_calendar_service():
 
 
 def fetch_events_for_window(service, window: MonthWindow) -> list[dict]:
+    if window.end <= window.start:
+        return []
+
     events: list[dict] = []
     page_token = None
 
@@ -180,16 +223,30 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=DEFAULT_TIMEZONE,
         help=f"IANA timezone name (default: {DEFAULT_TIMEZONE})",
     )
+    parser.add_argument(
+        "--show-matched-events",
+        action="store_true",
+        help="Show detail lines for each matched event",
+    )
+    parser.add_argument(
+        "--include-through-month-end",
+        action="store_true",
+        help="Include events up to the end of the month (default caps at current time)",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     try:
-        window = parse_month_window(args.month, args.timezone)
+        month_window = parse_month_window(args.month, args.timezone)
+        window = resolve_aggregation_window(
+            month_window=month_window,
+            include_through_month_end=args.include_through_month_end,
+        )
         service = build_calendar_service()
         events = fetch_events_for_window(service, window)
-        total_seconds, matched_count = aggregate_event_seconds(events, args.title, window)
+        total_seconds, matched_count, details = aggregate_event_seconds(events, args.title, window)
     except WorklogError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
@@ -199,9 +256,18 @@ def main(argv: list[str] | None = None) -> int:
 
     total_hours = total_seconds / 3600.0
     print(f"Month: {args.month}")
+    print(f"Aggregation end: {window.end.strftime('%Y-%m-%d %H:%M %Z')}")
     print(f"Title (exact): {args.title}")
     print(f"Matched events: {matched_count}")
     print(f"Total hours: {total_hours:.2f}h")
+    if args.show_matched_events:
+        if not details:
+            print("Matched event details: none")
+        else:
+            print("Matched event details:")
+            display_tz = window.start.tzinfo
+            for index, detail in enumerate(details, start=1):
+                print(format_event_detail_line(index, detail, display_tz))
     return 0
 
 
