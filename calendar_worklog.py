@@ -7,6 +7,7 @@ import argparse
 import sys
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 
@@ -156,12 +157,13 @@ def build_calendar_service():
         ) from exc
 
     creds = None
-    token_path = "token.json"
-    credentials_path = "credentials.json"
+    base_dir = Path(__file__).resolve().parent
+    token_path = base_dir / "token.json"
+    credentials_path = base_dir / "credentials.json"
 
     if Credentials and token_path:
         try:
-            creds = Credentials.from_authorized_user_file(token_path, [READONLY_SCOPE])
+            creds = Credentials.from_authorized_user_file(str(token_path), [READONLY_SCOPE])
         except FileNotFoundError:
             creds = None
         except ValueError:
@@ -176,7 +178,7 @@ def build_calendar_service():
         else:
             try:
                 flow = InstalledAppFlow.from_client_secrets_file(
-                    credentials_path, [READONLY_SCOPE]
+                    str(credentials_path), [READONLY_SCOPE]
                 )
             except FileNotFoundError as exc:
                 raise WorklogError(
