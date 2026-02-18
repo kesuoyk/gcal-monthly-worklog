@@ -109,6 +109,31 @@ class AggregateEventSecondsTests(unittest.TestCase):
         self.assertEqual(matched, 0)
         self.assertEqual(total_seconds, 0)
 
+    def test_matched_event_details_are_sorted_by_start(self):
+        events = [
+            {
+                "summary": "案件A",
+                "status": "confirmed",
+                "start": {"dateTime": "2026-02-10T10:00:00+09:00"},
+                "end": {"dateTime": "2026-02-10T11:00:00+09:00"},
+            },
+            {
+                "summary": "案件A",
+                "status": "confirmed",
+                "start": {"dateTime": "2026-02-05T10:00:00+09:00"},
+                "end": {"dateTime": "2026-02-05T11:00:00+09:00"},
+            },
+        ]
+        _, matched, details = aggregate_event_seconds(events, "案件A", self.window(2026, 2))
+        self.assertEqual(matched, 2)
+        self.assertEqual(
+            [detail.start for detail in details],
+            [
+                datetime(2026, 2, 5, 10, 0, 0, tzinfo=self.tz),
+                datetime(2026, 2, 10, 10, 0, 0, tzinfo=self.tz),
+            ],
+        )
+
     def test_format_event_detail_line(self):
         detail = MatchedEventDetail(
             title="案件A",

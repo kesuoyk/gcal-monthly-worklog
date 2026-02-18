@@ -115,6 +115,7 @@ def aggregate_event_seconds(
                 )
             )
 
+    details.sort(key=lambda detail: (detail.start, detail.end))
     return total_seconds, matched_count, details
 
 
