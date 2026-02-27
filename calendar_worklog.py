@@ -175,8 +175,14 @@ def build_calendar_service():
             try:
                 creds.refresh(Request())
             except Exception as exc:
-                raise WorklogError(f"Failed to refresh OAuth token: {exc}") from exc
-        else:
+                # Some refresh tokens are permanently invalidated by Google.
+                # In that case, fall back to interactive OAuth to mint a new token.
+                if "invalid_grant" in str(exc):
+                    creds = None
+                else:
+                    raise WorklogError(f"Failed to refresh OAuth token: {exc}") from exc
+
+        if not creds or not creds.valid:
             try:
                 flow = InstalledAppFlow.from_client_secrets_file(
                     str(credentials_path), [READONLY_SCOPE]

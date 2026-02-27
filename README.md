@@ -64,3 +64,4 @@ Total hours: 31.50h
 - 終日予定（all-day event）は集計対象外です。
 - タイトルは完全一致のみ対象です（部分一致しません）。
 - 初回実行時にブラウザ認証が走り、`token.json` が保存されます。
+- `invalid_grant`（`Token has been expired or revoked`）が出た場合はトークン失効です。最新版では自動で再認証にフォールバックします。もし続く場合は `token.json` を削除して再実行してください。
