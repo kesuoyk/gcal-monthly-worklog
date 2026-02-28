@@ -56,7 +56,7 @@ Month: 2026-02
 Aggregation end: 2026-02-14 21:00 JST
 Title (exact): 案件A
 Matched events: 7
-Total hours: 31.50h
+Total hours: 31h30min
 ```
 
 ## Notes

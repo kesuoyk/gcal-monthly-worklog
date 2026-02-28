@@ -119,6 +119,12 @@ def aggregate_event_seconds(
     return total_seconds, matched_count, details
 
 
+def format_seconds_as_hours_minutes(total_seconds: float) -> str:
+    rounded_minutes = round(total_seconds / 60.0)
+    hours, minutes = divmod(rounded_minutes, 60)
+    return f"{hours}h{minutes:02d}min"
+
+
 def format_event_detail_line(
     index: int,
     detail: MatchedEventDetail,
@@ -128,8 +134,8 @@ def format_event_detail_line(
     date_format = "%Y-%m-%d (%a) %H:%M" if show_weekday else "%Y-%m-%d %H:%M"
     start_text = detail.start.astimezone(tzinfo).strftime(date_format)
     end_text = detail.end.astimezone(tzinfo).strftime(date_format)
-    counted_hours = detail.counted_seconds / 3600.0
-    return f"{index}. {start_text} -> {end_text} ({counted_hours:.2f}h)"
+    counted_text = format_seconds_as_hours_minutes(detail.counted_seconds)
+    return f"{index}. {start_text} -> {end_text} ({counted_text})"
 
 
 def resolve_aggregation_window(
@@ -274,12 +280,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: Google Calendar API request failed: {exc}", file=sys.stderr)
         return 1
 
-    total_hours = total_seconds / 3600.0
+    total_text = format_seconds_as_hours_minutes(total_seconds)
     print(f"Month: {args.month}")
     print(f"Aggregation end: {window.end.strftime('%Y-%m-%d %H:%M %Z')}")
     print(f"Title (exact): {args.title}")
     print(f"Matched events: {matched_count}")
-    print(f"Total hours: {total_hours:.2f}h")
+    print(f"Total hours: {total_text}")
     if args.show_matched_events:
         if not details:
             print("Matched event details: none")

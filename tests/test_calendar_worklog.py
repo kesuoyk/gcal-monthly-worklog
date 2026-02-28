@@ -7,6 +7,7 @@ from calendar_worklog import (
     MonthWindow,
     aggregate_event_seconds,
     format_event_detail_line,
+    format_seconds_as_hours_minutes,
     resolve_aggregation_window,
 )
 
@@ -142,7 +143,7 @@ class AggregateEventSecondsTests(unittest.TestCase):
             counted_seconds=2.5 * 3600,
         )
         line = format_event_detail_line(1, detail, self.tz)
-        self.assertEqual(line, "1. 2026-02-04 20:00 -> 2026-02-04 22:30 (2.50h)")
+        self.assertEqual(line, "1. 2026-02-04 20:00 -> 2026-02-04 22:30 (2h30min)")
 
     def test_format_event_detail_line_with_weekday(self):
         detail = MatchedEventDetail(
@@ -152,7 +153,14 @@ class AggregateEventSecondsTests(unittest.TestCase):
             counted_seconds=2.5 * 3600,
         )
         line = format_event_detail_line(1, detail, self.tz, show_weekday=True)
-        self.assertEqual(line, "1. 2026-02-04 (Wed) 20:00 -> 2026-02-04 (Wed) 22:30 (2.50h)")
+        self.assertEqual(line, "1. 2026-02-04 (Wed) 20:00 -> 2026-02-04 (Wed) 22:30 (2h30min)")
+
+    def test_format_seconds_as_hours_minutes(self):
+        self.assertEqual(format_seconds_as_hours_minutes(2.5 * 3600), "2h30min")
+        self.assertEqual(format_seconds_as_hours_minutes(2 * 3600), "2h00min")
+        self.assertEqual(format_seconds_as_hours_minutes(59 * 60 + 31), "1h00min")
+        self.assertEqual(format_seconds_as_hours_minutes(59 * 60 + 29), "0h59min")
+        self.assertEqual(format_seconds_as_hours_minutes(0), "0h00min")
 
     def test_resolve_aggregation_window_caps_to_now_by_default(self):
         month_window = self.window(2026, 2)
